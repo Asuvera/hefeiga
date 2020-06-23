@@ -22,7 +22,6 @@ public class DepartmentServiceImpl implements DepartmentService {
 
     @Override
     public List<OrgDepartment> getAllDepartment() {
-//        return departmentMapper.getAllDepartment();
-        return null;
+        return departmentMapper.getAllDepartments();
     }
 }

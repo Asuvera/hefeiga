@@ -3,6 +3,7 @@ package cc.mrbird.febs.lxj.controller;
 
 import cc.mrbird.febs.common.entity.DeptTree;
 import cc.mrbird.febs.common.utils.TreeUtil;
+import cc.mrbird.febs.common.utils.TreeUtilByZsh;
 import cc.mrbird.febs.lxj.entity.*;
 import cc.mrbird.febs.lxj.service.AttendanceService;
 import cc.mrbird.febs.lxj.service.DepartmentService;
@@ -223,7 +224,7 @@ public class ReportFormController {
            objectDeptTree.setName(allDepartment.get(i).getName());
            deptTrees.add(objectDeptTree);
         }
-        List<DeptTree<T>> deptTrees1 = TreeUtil.buildDeptTree(deptTrees);
+        List<DeptTree<T>> deptTrees1 = TreeUtilByZsh.buildDeptTree(deptTrees);
         System.out.println(deptTrees1);
         Object o = JSONObject.toJSON(deptTrees1);
         System.out.println(o);
