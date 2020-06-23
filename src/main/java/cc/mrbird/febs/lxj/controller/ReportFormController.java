@@ -278,6 +278,19 @@ public class ReportFormController {
         reportFormDisplayField2.setName("缺卡次数");
         reportFormDisplayField2.setAlias("work_lack_card_times");
         result.add(reportFormDisplayField2);
+        ReportFormDisplayField reportFormDisplayField3 = new ReportFormDisplayField();
+        reportFormDisplayField3.setName("迟到次数");
+        reportFormDisplayField3.setAlias("late_times");
+        result.add(reportFormDisplayField3);
+        ReportFormDisplayField reportFormDisplayField4 = new ReportFormDisplayField();
+        reportFormDisplayField4.setName("早退次数");
+        reportFormDisplayField4.setAlias("leave_early_times");
+        result.add(reportFormDisplayField4);
+        ReportFormDisplayField reportFormDisplayField5 = new ReportFormDisplayField();
+        reportFormDisplayField5.setName("补卡次数");
+        reportFormDisplayField5.setAlias("making_up_lack_times");
+        result.add(reportFormDisplayField5);
+
         return result;
     }
 
