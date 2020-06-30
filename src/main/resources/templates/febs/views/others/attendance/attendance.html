@@ -1,0 +1,352 @@
+<div class="layui-fluid layui-anim febs-anim" id="febs-attendance" lay-title="考勤管理">
+    <div class="layui-row febs-container">
+        <div class="layui-col-md12">
+            <div class="layui-card">
+                <div class="layui-card-body">
+                    <form class="layui-form check-form" action="" lay-filter="febs-form-elements">
+                        <div class="layui-row">
+                            <div class="layui-form-item">
+                                <label class="layui-form-label">展示列：</label>
+                                <div class="layui-input-block">
+                                    <input type="checkbox" name="functional" title="职位"  value="duty" lay-skin="primary">
+                                    <input type="checkbox" name="functional" title="出勤天数"  value="attendance_days" lay-skin="primary">
+                                    <input type="checkbox" name="functional" title="旷工天数"  value="absenteeism_days" lay-skin="primary">
+                                    <input type="checkbox" name="functional" title="缺卡次数" value="work_lack_card_times" lay-skin="primary">
+                                    <input type="checkbox" name="functional" title="迟到次数" value="late_times" lay-skin="primary">
+                                    <input type="checkbox" name="functional" title="早退次数" value="leave_early_times" lay-skin="primary">
+                                    <input type="checkbox" name="functional" title="补卡次数" value="making_up_lack_times" lay-skin="primary">
+                                </div>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+        <div class="layui-col-md12">
+            <div class="layui-card">
+                <div class="layui-card-body febs-table-full">
+                    <form class="layui-form layui-table-form">
+                        <div class="layui-row">
+                            <div class="layui-col-md9">
+                                <div class="layui-form-item">
+                                    <div class="layui-inline">
+                                        <label class="layui-form-label layui-form-label-sm">创建时间</label>
+                                        <div class="layui-input-inline">
+                                            <input type="text" name="createTime" id="attend-createTime" class="layui-input">
+                                        </div>
+                                    </div>
+                                    <div class="layui-inline">
+                                        <label class="layui-form-label layui-form-label-sm">部门</label>
+                                        <div class="layui-input-inline">
+                                            <input type="text" name="attendept" id="attendept" lay-filter="attendept"
+                                                   class="layui-input">
+                                        </div>
+                                    </div>
+                                    <div class="layui-inline">
+                                        <label class="layui-form-label layui-form-label-sm">职位</label>
+                                        <div class="layui-input-inline" lay-filter="position">
+                                             <select name="position" id="position">
+                                             </select>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="layui-col-md3 layui-col-sm12 layui-col-xs12">
+                                <div class="layui-inline">
+                                    <button class="layui-btn" lay-submit lay-filter="febs-form-elements">生成考勤报表</button>
+                                    <button class="layui-btn" id="daochu">导出表格</button>
+                                    <button type="reset" class="layui-btn layui-btn-primary" id="reset">重置</button>
+                                </div>
+                            </div>
+                        </div>
+                    </form>
+                    <table lay-filter="attendTable" lay-data="{id: 'attendTable'}" id="tables"></table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script data-th-inline="none" type="text/javascript">
+    layui.use(['jquery', 'laydate', 'form', 'table', 'febs', 'treeSelect'], function () {
+        var $ = layui.jquery,
+            laydate = layui.laydate,
+            febs = layui.febs,
+            form = layui.form,
+            table = layui.table,
+            treeSelect = layui.treeSelect,
+            $view = $('#febs-attendance'),
+            $reset = $view.find('#reset'),
+            $daochu = $view.find('#daochu'),
+            $searchForm = $view.find('form'),
+            flag = true,
+            tableFlag = false,
+            postData = {},
+            daochuData = {},
+            tableData = [],
+            positionTxt,
+            createTimeFrom,
+            createTimeTo;
+
+        var colData = [
+            {type: 'checkbox'},
+            {field: 'name', title: '姓名', width: 100},
+            {field: 'duty',  title: '职位', width: 200},
+            {field: 'attendance_days', title: '出勤天数', width: 140},
+            {field: 'absenteeism_days', title: '旷工天数', width: 140},
+            {field: 'work_lack_card_times', title: '缺卡次数', width: 140},
+            {field: 'late_times', title: '迟到次数', width: 140},
+            {field: 'leave_early_times', title: '早退次数', width: 140},
+            {field: 'making_up_lack_times', title: '补卡次数', width: 140},
+        ];
+
+        form.render();
+
+        var groupCheck = Array.from($("input[name='functional']"));
+
+
+        initTable();
+        // 日期
+        laydate.render({
+            elem: '#attend-createTime',
+            range: true,
+            trigger: 'click'
+        });
+
+        // 部门数据渲染
+        treeSelect.render({
+            elem: $view.find('#attendept'),
+            type: 'get',
+            data: 'http://172.16.19.24:8080/reportForm/departmentTree',
+            placeholder: '请选择',
+            search: false,
+            click: function (d) {
+                var deptId = [];
+                deptId.push(d.current.id)
+                // 通过部门id，获取职位数据
+                $.ajax({
+                    type:'post',
+                    url:'http://172.16.19.24:8080/reportForm/positionListByDept?departmentIds='+ deptId,
+                    async:true,
+                    success:function(datas){
+                        if(datas.length > 0){
+                            datas.unshift('请选择');
+                            var option = '';
+                            for(var i=0;i<datas.length;i++){
+                                this.index = i ;
+                                //循环获取返回值，并组装成html代码
+                                option +="<option value='"+this.index+"'>"+datas[i]+"</option>";
+                            }
+                        }else{
+                            var option = '<option value="0">请选择</option>';  //默认值
+                        }
+                        $("#position").html("");
+                        $("#position").append(option);
+                        form.render();
+                    },
+                });
+            }
+        })
+
+        // 发送请求，获取考勤报表
+        function send(postData){
+            $.ajax({
+                type: "POST",
+                url: "http://172.16.19.24:8080/reportForm/openForm",
+                traditional: true,
+                data: JSON.stringify(postData),
+                contentType: "application/json;charset=utf-8",
+                beforeSend: function (XMLHttpRequest) {
+                    XMLHttpRequest.setRequestHeader("token", "eyJhbGciOiJIUzUxMiJ9.eyJzdWIiOiIxOD.....");
+                },
+                success: function (res) {
+                    flag = false;
+                    tableData = res.data;
+                    if(res.data.length > 0){
+                        tableFlag = true;
+                        tableIns.reload({cols: [colData], data: tableData});
+                        checkboxChecked();
+                        // getCheck();
+                    }else{
+                        tableIns.reload({cols: [{}], data: tableData});
+                        groupCheck.forEach(item => {
+                            if(item.checked){
+                                item.checked = !item.checked;
+                            }
+                        })
+                        form.render();
+                        layer.msg('暂时无数据!', {icon: 2});
+                    }
+                },
+                error:function(err){
+                    //失败之后执行（我不管，失败别找我i）
+                    alert("数据不存在")
+
+                }
+            })
+        }
+
+        // 考勤报表点击事件
+        form.on('submit(febs-form-elements)', function(data){
+            console.log(data);
+            if(!data.field.createTime){
+                layer.msg('时间不能为空！', {icon: 6});
+            }else if(!data.field.attendept){
+                layer.msg('请选择部门！', {icon: 6});
+            }else{
+                var str = JSON.stringify(data.field);
+                var json = eval('('+str+')');
+                var departId = [];
+                createTimeFrom = json.createTime.split(' - ')[0] + ' 00:00:00';
+                createTimeTo = json.createTime.split(' - ')[1] + ' 23:59:59';
+                departId.push(json.attendept);
+
+                // 要传的参数
+                postData.startDate = createTimeFrom;
+                postData.endDate = createTimeTo;
+                postData.departmentIds = departId;
+                positionTxt = $("#position").find("option:selected").text();
+                if( positionTxt != '请选择' ){
+                    postData.position = positionTxt;
+                }
+
+                console.log(postData);
+                send(postData);
+            }
+            return false;
+        })
+
+        // 表格初始化
+        function initTable() {
+            tableIns = febs.table.init({
+                elem: $view.find('table'),
+                id: 'attendTable',
+                loading: true,
+                cols: flag ? [[]] : [colData],
+                data: tableData,
+            });
+        }
+        checkboxChecked();
+        // 复选框选中
+        function checkboxChecked(){
+            // 获取表头字段
+            var thArr = Array.from($view.find('table th'))
+            var colArr = [];
+            thArr.forEach(item => {
+                if(item.innerText){
+                    colArr.push(item.innerText);
+                }
+            })
+            console.log(colArr);
+            // 选中复选框
+            var groupCheckbox = $("input[name='functional']");
+            console.log(groupCheckbox);
+            for (var i = 0; i < groupCheckbox.length; i++) {
+                var val =groupCheckbox[i].title;
+                if(colArr.includes(val)){
+                    groupCheckbox[i].checked=true;
+                }
+            }
+            form.render();
+        }
+
+        var addColData = JSON.parse(JSON.stringify(colData))
+        // 复选框事件监听
+        form.on('checkbox', function(data){
+            if(tableFlag){
+                if(!data.elem.checked){
+                    addColData.forEach((item) => {
+                        if(item.field == data.value){
+                            item.hide = true;
+                        }
+                    })
+                }else{
+                    addColData.forEach((item) => {
+                        if(item.field == data.value){
+                            item.hide = false;
+                        }
+                    })
+                }
+                tableIns.reload({cols: [addColData], data: tableData});
+                form.render();
+            }
+        });
+
+        var checkArr = [];
+        function getCheck() {
+            debugger;
+            groupCheck.forEach(item => {
+                if(item.checked){
+                    checkArr.push(item.title);
+                }
+            })
+            postData.includeColumn = checkArr;
+            console.log(checkArr);
+        }
+
+        // 导出报表
+        $daochu.on('click', function () {
+            console.log(groupCheck)
+            if(!tableFlag){
+                layer.msg('没有可以生成的报表', {icon:2});
+                return false;
+            }
+            getCheck();
+            debugger;
+            //原生ajax
+            var xhr = new XMLHttpRequest();
+            //post方式请求后台的路径
+            xhr.open('post', 'http://172.16.19.24:8080/reportForm/exportForm', true);
+            //导出的Excel是二进制数据类型，所以设置为blob
+            xhr.responseType = 'blob';
+            //请求头（key,value），请求头可以设置多个key-value对
+            xhr.setRequestHeader('Content-Type', 'application/json;charset=utf-8');
+            //返回成功，导出的Excel文件
+            xhr.onload = function () {
+                console.log(this.response);
+                if (!this.response) {
+                    return
+                }
+                var blob = this.response;
+                var a = document.createElement('a');
+                var url = window.URL.createObjectURL(blob);
+                a.href = url;
+                //设置文件名称
+                a.download = '考勤报表.xlsx';
+                a.click();
+                checkArr = [];
+            }
+            //请求的参数，json格式，后台要用json格式接收
+            xhr.send(JSON.stringify({
+                "startDate" : postData.startDate,
+                "endDate" : postData.endDate,
+                "departmentIds": postData.departmentIds,
+                "position": positionTxt,
+                "includeColumn": checkArr
+            }));
+
+            // $.ajax({
+            //     type: "POST",
+            //     url: "http://172.16.19.24:8080/reportForm/exportForm ",
+            //     traditional: true,
+            //     data: JSON.stringify(postData),
+            //     contentType: "application/json;charset=utf-8",
+            //     beforeSend: function (XMLHttpRequest) {
+            //         XMLHttpRequest.setRequestHeader("token", "eyJhbGciOiJIUzUxMiJ9.eyJzdWIiOiIxOD.....");
+            //     },
+            //     success: function (res) {
+            //         debugger;
+            //         console.log(res);
+            //         if (!res) {
+            //             return
+            //         }
+            //     },
+            //     error:function(err){
+            //         //失败之后执行（我不管，失败别找我i）
+            //         alert("数据不存在")
+            //
+            //     }
+            // })
+        })
+    })
+</script>
