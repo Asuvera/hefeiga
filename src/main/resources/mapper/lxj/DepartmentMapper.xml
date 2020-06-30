@@ -90,5 +90,11 @@
         SELECT *
         FROM org_department
     </select>
+    <select id="selectByParentId" resultType="cc.mrbird.febs.lxj.entity.OrgDepartment">
+        select  * from org_department where sourceParentId = #{sourceParentId}
+    </select>
 
+    <select id="selectAllChildDept" parameterType="Integer" resultType="string">
+        select febs_base.getChildLst(#{0})
+    </select>
 </mapper>

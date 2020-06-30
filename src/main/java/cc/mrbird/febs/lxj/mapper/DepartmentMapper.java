@@ -50,6 +50,13 @@ public interface DepartmentMapper {
      */
     OrgDepartment getDepartmentById(String sourceId);
 
+    /**
+     * 根据钉钉部门parentId获取部门id
+     */
+    List<OrgDepartment> selectByParentId(String sourceParentId);
 
-
+    /**
+     * 调用存储函数
+     */
+    String selectAllChildDept(int sourceParentId);
 }

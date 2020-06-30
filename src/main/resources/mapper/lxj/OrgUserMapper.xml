@@ -11,7 +11,7 @@
       </foreach>
       </if>
 
-      <if test="position != null ">
+      <if test="position != null and position !=''">
       AND position = #{position}
       </if>
   </where>
@@ -32,4 +32,7 @@
         </if>
         </where>
     </select>
+
+
+
 </mapper>

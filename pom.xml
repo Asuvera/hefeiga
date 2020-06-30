@@ -8,7 +8,7 @@
     <name>febs</name>
     <description>Spring Boot,Shiro 权限管理系统，https://github.com/wuyouzhuguli/FEBS-Shiro</description>
 
-    <parent>
+    <parent>sourceParentId
         <groupId>org.springframework.boot</groupId>
         <artifactId>spring-boot-starter-parent</artifactId>
         <version>2.2.5.RELEASE</version>
