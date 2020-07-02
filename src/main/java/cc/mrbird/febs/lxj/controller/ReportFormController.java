@@ -2,6 +2,7 @@ package cc.mrbird.febs.lxj.controller;
 
 
 import cc.mrbird.febs.common.entity.DeptTree;
+import cc.mrbird.febs.common.entity.FebsResponse;
 import cc.mrbird.febs.common.utils.TreeUtil;
 import cc.mrbird.febs.common.utils.TreeUtilByZsh;
 import cc.mrbird.febs.lxj.entity.*;
@@ -96,6 +97,9 @@ public class ReportFormController {
             ReportFormUserInfo reportFormUserInfo = new ReportFormUserInfo();
             reportFormUserInfo.setName(orgUserByPlus.getName());
             reportFormUserInfo.setDuty(orgUserByPlus.getPosition());
+            reportFormUserInfo.setAttendance_days(new BigDecimal(0));
+            reportFormUserInfo.setAttendance_work_time(new BigDecimal(0));
+            reportFormUserInfo.setExtra_work_time(new BigDecimal(0));
 
             for (int k = 0; k < list.size(); k++) {
                 String startDateString = list.get(k).getStart().toString();
@@ -120,12 +124,10 @@ public class ReportFormController {
                     if ("7255015".equals(o.toString())) {
                         JSONArray column_vals_details = column_vals.getJSONObject(i).getJSONArray("column_vals");
                         for (int i1 = 0; i1 < column_vals_details.size(); i1++) {
-                            if (i1 == 0) {
-                                reportFormUserInfo.setAttendance_days(new BigDecimal(column_vals_details.getJSONObject(i1).getDoubleValue("value")));
-                            } else {
+
                                 BigDecimal value = reportFormUserInfo.getAttendance_days().add(new BigDecimal(column_vals_details.getJSONObject(i1).getDoubleValue("value")));
                                 reportFormUserInfo.setAttendance_days(value);
-                            }
+
 
                         }
                     }
@@ -180,24 +182,20 @@ public class ReportFormController {
                     if ("7255017".equals(o.toString())) {
                         JSONArray column_vals_details = column_vals.getJSONObject(i).getJSONArray("column_vals");
                         for (int i4 = 0; i4 < column_vals_details.size(); i4++) {
-                            if (i4 == 0) {
-                                reportFormUserInfo.setAttendance_work_time(new BigDecimal(column_vals_details.getJSONObject(i4).getDoubleValue("value")));
-                            } else {
+
                                 BigDecimal value = reportFormUserInfo.getAttendance_work_time().add(new BigDecimal(column_vals_details.getJSONObject(i4).getDoubleValue("value")));
                                 reportFormUserInfo.setAttendance_work_time(value);
-                            }
+
                         }
                     }
                     //加班时长
                     if ("115051078".equals(o.toString())) {
                         JSONArray column_vals_details = column_vals.getJSONObject(i).getJSONArray("column_vals");
                         for (int i4 = 0; i4 < column_vals_details.size(); i4++) {
-                            if (i4 == 0) {
-                                reportFormUserInfo.setExtra_work_time(new BigDecimal(column_vals_details.getJSONObject(i4).getDoubleValue("value")));
-                            } else {
+
                                 BigDecimal value = reportFormUserInfo.getExtra_work_time().add(new BigDecimal(column_vals_details.getJSONObject(i4).getDoubleValue("value")));
                                 reportFormUserInfo.setExtra_work_time(value);
-                            }
+
                         }
                     }
                     //外出次数
@@ -211,6 +209,15 @@ public class ReportFormController {
 
 
                 }
+            }
+            if (reportFormUserInfo.getAttendance_days() == new BigDecimal(0)){
+                reportFormUserInfo.setAttendance_work_time(new BigDecimal(0));
+                reportFormUserInfo.setExtra_work_time(new BigDecimal(0));
+            }else{
+                BigDecimal avgWorkTime = reportFormUserInfo.getAttendance_work_time().divide(reportFormUserInfo.getAttendance_days(), 2, BigDecimal.ROUND_HALF_UP);
+                BigDecimal avgExtraTime = reportFormUserInfo.getExtra_work_time().divide(reportFormUserInfo.getAttendance_days(), 2, BigDecimal.ROUND_HALF_UP);
+                reportFormUserInfo.setAttendance_work_time(avgWorkTime);
+                reportFormUserInfo.setExtra_work_time(avgExtraTime);
             }
             userInfoList.add(reportFormUserInfo);
         }
@@ -353,13 +360,19 @@ public class ReportFormController {
         SimpleDateFormat df = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
         DateRange d = new DateRange(df.parse(startDate), df.parse(endDate));
         List<DateRange> list = d.splitByMonth();
-        list.forEach(x -> System.out.println("start=" + df.format(x.getStart()) + ", end=" + df.format(x.getEnd())));
+        //list.forEach(x -> System.out.println("start=" + df.format(x.getStart()) + ", end=" + df.format(x.getEnd())));
 
         String position = reportFormCondition.getPosition();
         String[] departmentIds = reportFormCondition.getDepartmentIds();
-        List<String> deptIds = new ArrayList<String>();
-        Collections.addAll(deptIds, departmentIds);
-        List<OrgUserByPlus> orgUserByPluses = OrgUserService.selectUsersBydeptIdAndPosition(deptIds, position);
+
+        String sourceParentId = departmentIds[0];
+        String deptString = departmentMapper.selectAllChildDept(Integer.parseInt(sourceParentId));
+        System.out.println(deptString);
+        String[] split = deptString.split(",");
+        List<String> deptList = new ArrayList<>();
+        Collections.addAll(deptList, split);
+        deptList.remove(0);
+        List<OrgUserByPlus> orgUserByPluses = OrgUserService.selectUsersBydeptIdAndPosition(deptList, position);
         String accessToken = attendanceService.getAccessToken();
         List<ReportFormUserInfo> userInfoList = new ArrayList<>();
         int num = orgUserByPluses.size();
@@ -367,34 +380,40 @@ public class ReportFormController {
         for (OrgUserByPlus orgUserByPlus : orgUserByPluses) {
             ReportFormUserInfo reportFormUserInfo = new ReportFormUserInfo();
             reportFormUserInfo.setName(orgUserByPlus.getName());
-            reportFormUserInfo.setDuty(orgUserByPlus.getDepartmentid());
+            reportFormUserInfo.setDuty(orgUserByPlus.getPosition());
+            reportFormUserInfo.setAttendance_days(new BigDecimal(0));
+            reportFormUserInfo.setAttendance_work_time(new BigDecimal(0));
+            reportFormUserInfo.setExtra_work_time(new BigDecimal(0));
 
             for (int k = 0; k < list.size(); k++) {
                 String startDateString = list.get(k).getStart().toString();
                 System.out.println("拆分后开始时间" + startDateString);
-                System.out.println(list.get(k).getStart());
                 String endDateString = list.get(k).getEnd().toString();
                 System.out.println("拆分后结束时间" + endDateString);
                 DingTalkClient client3 = new DefaultDingTalkClient("https://oapi.dingtalk.com/topapi/attendance/getcolumnval");
                 OapiAttendanceGetcolumnvalRequest req3 = new OapiAttendanceGetcolumnvalRequest();
-                req3.setUserid("15729343961277397");
-                //                  出勤天数,  旷工天数 上班缺卡次数 下班缺卡次数 迟到 早退
-                req3.setColumnIdList("7255015,7255027,7255025,7255026,7255018,7255023");
+                req3.setUserid(orgUserByPlus.getSourceid());
+                //                  出勤天数,  旷工天数 上班缺卡次数 下班缺卡次数 迟到 早退    工作时长  加班时长    外出次数
+                req3.setColumnIdList("7255015,7255027,7255025,7255026,7255018,7255023,7255017,115051078,115429873");
                 req3.setFromDate(list.get(k).getStart());
                 req3.setToDate(list.get(k).getEnd());
                 OapiAttendanceGetcolumnvalResponse rsp3 = client3.execute(req3, accessToken);
                 JSONObject jsonObject = JSON.parseObject(rsp3.getBody());
                 JSONObject result = jsonObject.getJSONObject("result");
+
                 JSONArray column_vals = result.getJSONArray("column_vals");
                 System.out.println(column_vals);
                 for (int i = 0; i < column_vals.size(); i++) {
                     Object o = column_vals.getJSONObject(i).getJSONObject("column_vo").get("id");
                     if ("7255015".equals(o.toString())) {
                         JSONArray column_vals_details = column_vals.getJSONObject(i).getJSONArray("column_vals");
-//                        for (int i1 = 0; i1 < column_vals_details.size(); i1++) {
-//                            double value = reportFormUserInfo.getAttendance_days() + column_vals_details.getJSONObject(i1).getDoubleValue("value");
-//                            reportFormUserInfo.setAttendance_days(value);
-//                        }
+                        for (int i1 = 0; i1 < column_vals_details.size(); i1++) {
+
+                            BigDecimal value = reportFormUserInfo.getAttendance_days().add(new BigDecimal(column_vals_details.getJSONObject(i1).getDoubleValue("value")));
+                            reportFormUserInfo.setAttendance_days(value);
+
+
+                        }
                     }
                     if ("7255027".equals(o.toString())) {
                         JSONArray column_vals_details = column_vals.getJSONObject(i).getJSONArray("column_vals");
@@ -435,13 +454,56 @@ public class ReportFormController {
                             reportFormUserInfo.setLeave_early_times(value);
                         }
                     }
+                    //补卡次数
+                    if ("22732321".equals(o.toString())) {
+                        JSONArray column_vals_details = column_vals.getJSONObject(i).getJSONArray("column_vals");
+                        for (int i4 = 0; i4 < column_vals_details.size(); i4++) {
+                            int value = reportFormUserInfo.getMaking_up_lack_times() + column_vals_details.getJSONObject(i4).getIntValue("value");
+                            reportFormUserInfo.setMaking_up_lack_times(value);
+                        }
+                    }
+                    //工作时长
+                    if ("7255017".equals(o.toString())) {
+                        JSONArray column_vals_details = column_vals.getJSONObject(i).getJSONArray("column_vals");
+                        for (int i4 = 0; i4 < column_vals_details.size(); i4++) {
+
+                            BigDecimal value = reportFormUserInfo.getAttendance_work_time().add(new BigDecimal(column_vals_details.getJSONObject(i4).getDoubleValue("value")));
+                            reportFormUserInfo.setAttendance_work_time(value);
+
+                        }
+                    }
+                    //加班时长
+                    if ("115051078".equals(o.toString())) {
+                        JSONArray column_vals_details = column_vals.getJSONObject(i).getJSONArray("column_vals");
+                        for (int i4 = 0; i4 < column_vals_details.size(); i4++) {
+
+                            BigDecimal value = reportFormUserInfo.getExtra_work_time().add(new BigDecimal(column_vals_details.getJSONObject(i4).getDoubleValue("value")));
+                            reportFormUserInfo.setExtra_work_time(value);
+
+                        }
+                    }
+                    //外出次数
+                    if ("115429873".equals(o.toString())) {
+                        JSONArray column_vals_details = column_vals.getJSONObject(i).getJSONArray("column_vals");
+                        for (int i4 = 0; i4 < column_vals_details.size(); i4++) {
+                            int value = reportFormUserInfo.getOut_times() + column_vals_details.getJSONObject(i4).getIntValue("value");
+                            reportFormUserInfo.setOut_times(value);
+                        }
+                    }
+
+
                 }
-
-
             }
-
+            if (reportFormUserInfo.getAttendance_days() == new BigDecimal(0)){
+                reportFormUserInfo.setAttendance_work_time(new BigDecimal(0));
+                reportFormUserInfo.setExtra_work_time(new BigDecimal(0));
+            }else{
+                BigDecimal avgWorkTime = reportFormUserInfo.getAttendance_work_time().divide(reportFormUserInfo.getAttendance_days(), 2, BigDecimal.ROUND_HALF_UP);
+                BigDecimal avgExtraTime = reportFormUserInfo.getExtra_work_time().divide(reportFormUserInfo.getAttendance_days(), 2, BigDecimal.ROUND_HALF_UP);
+                reportFormUserInfo.setAttendance_work_time(avgWorkTime);
+                reportFormUserInfo.setExtra_work_time(avgExtraTime);
+            }
             userInfoList.add(reportFormUserInfo);
-
         }
         String[] includeColumn = reportFormCondition.getIncludeColumn();
         List<String> includeColumnList = Arrays.asList(includeColumn);
@@ -462,6 +524,9 @@ public class ReportFormController {
             map.put("迟到次数", reportFormUserInfo.getLate_times());
             map.put("早退次数", reportFormUserInfo.getLeave_early_times());
             map.put("补卡次数", reportFormUserInfo.getMaking_up_lack_times());
+            map.put("工作时长", reportFormUserInfo.getAttendance_work_time());
+            map.put("加班时长", reportFormUserInfo.getExtra_work_time());
+            map.put("外出次数", reportFormUserInfo.getOut_times());
             exportDatas.add(map);
         }
         exportExcel(response, headers, exportDatas, reportFormCondition);

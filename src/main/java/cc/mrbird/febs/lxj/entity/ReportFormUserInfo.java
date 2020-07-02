@@ -1,6 +1,7 @@
 package cc.mrbird.febs.lxj.entity;
 
 
+import lombok.Builder;
 import lombok.Data;
 
 import java.math.BigDecimal;
@@ -13,7 +14,8 @@ public class ReportFormUserInfo {
     private String duty;
 
     //@ExcelProperty("出勤天数")
-    private BigDecimal attendance_days;//出勤天数
+
+    private BigDecimal attendance_days = new BigDecimal(0) ;//出勤天数
     //@ExcelProperty("旷工天数")
     private int absenteeism_days;//旷工天数
     //@ExcelProperty("缺卡次数")
